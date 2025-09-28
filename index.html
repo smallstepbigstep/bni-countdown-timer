@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer-when-downgrade">
+    <meta http-equiv="Content-Security-Policy" content="frame-ancestors *;">
+    <title>BNI Countdown Timer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .timer-container {
+            position: relative;
+            width: 200px;
+            height: 200px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .timer-circle {
+            position: absolute;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: #ffffff;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+            transition: all 0.3s ease;
+        }
+
+        .progress-ring {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            transform: rotate(-90deg);
+            z-index: 1;
+        }
+
+        .progress-ring__circle {
+            stroke: #e5e5e5;
+            stroke-width: 8;
+            fill: transparent;
+            r: 90;
+            cx: 100;
+            cy: 100;
+        }
+
+        .progress-ring__progress {
+            stroke: #C8102E;
+            stroke-width: 8;
+            stroke-linecap: round;
+            fill: transparent;
+            r: 90;
+            cx: 100;
+            cy: 100;
+            stroke-dasharray: 565.48;
+            stroke-dashoffset: 565.48;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+
+        .timer-display {
+            font-size: 48px;
+            font-weight: bold;
+            color: #C8102E;
+            text-align: center;
+            line-height: 1;
+            transition: color 0.3s ease;
+        }
+
+        .timer-label {
+            font-size: 12px;
+            color: #C8102E;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -60px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .controls.show {
+            opacity: 1;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: #C8102E;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #A00D26;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #C8102E;
+            border: 1px solid #C8102E;
+        }
+
+        .btn-secondary:hover {
+            background: #e9e9e9;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Warning state - 10 seconds and below */
+        .warning {
+            animation: shake-warning 0.2s infinite;
+        }
+
+        @keyframes shake-warning {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+
+        /* Critical state - 5 seconds and below */
+        .critical {
+            animation: shake-critical 0.15s infinite;
+        }
+
+        @keyframes shake-critical {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+
+        /* Finished state - flash red/white */
+        .finished {
+            animation: flash-finished 0.5s infinite;
+        }
+
+        .finished .timer-circle {
+            background: #C8102E;
+            box-shadow: 0 0 30px rgba(200, 16, 46, 0.5);
+        }
+
+        .finished .timer-display,
+        .finished .timer-label {
+            animation: flash-text 0.5s infinite;
+        }
+
+        @keyframes flash-finished {
+            0%, 100% { 
+                background: #C8102E;
+                box-shadow: 0 0 30px rgba(200, 16, 46, 0.5);
+            }
+            50% { 
+                background: white;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            }
+        }
+
+        @keyframes flash-text {
+            0%, 100% { color: white; }
+            50% { color: #C8102E; }
+        }
+
+        /* Settings Panel - Flat red cog icon */
+        .settings-panel {
+            position: absolute;
+            top: -40px;
+            right: -40px;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        .settings-panel.show {
+            opacity: 1;
+        }
+
+        .settings-panel:hover {
+            transform: scale(1.2);
+        }
+
+        .settings-icon {
+            width: 24px;
+            height: 24px;
+            fill: #C8102E;
+            transition: fill 0.2s ease;
+        }
+
+        .settings-panel:hover .settings-icon {
+            fill: #A00D26;
+        }
+
+        .settings-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .settings-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .settings-title {
+            color: #C8102E;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .settings-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .settings-label {
+            color: #C8102E;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #C8102E;
+            border-radius: 5px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: #A00D26;
+        }
+
+        .settings-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .btn-preset {
+            padding: 6px 12px;
+            background: #f5f5f5;
+            color: #C8102E;
+            border: 1px solid #C8102E;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-preset:hover,
+        .btn-preset.active {
+            background: #C8102E;
+            color: white;
+        }
+
+        /* Audio enable prompt */
+        .audio-prompt {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #C8102E;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 14px;
+            z-index: 1001;
+            display: none;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .audio-prompt:hover {
+            background: #A00D26;
+        }
+    </style>
+</head>
+<body>
+    <div class="audio-prompt" id="audioPrompt">
+        🔊 Tap here to enable audio alerts
+    </div>
+
+    <div class="timer-container">
+        <svg class="progress-ring">
+            <circle class="progress-ring__circle"></circle>
+            <circle class="progress-ring__progress" id="progress"></circle>
+        </svg>
+        
+        <div class="timer-circle" id="timerCircle">
+            <div class="timer-content">
+                <div class="timer-display" id="timeDisplay">60</div>
+                <div class="timer-label">seconds</div>
+            </div>
+        </div>
+
+        <div class="settings-panel" id="settingsBtn">
+            <svg class="settings-icon" viewBox="0 0 24 24">
+                <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+            </svg>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" id="startBtn">Start</button>
+            <button class="btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="settings-modal" id="settingsModal">
+        <div class="settings-content">
+            <div class="settings-title">Timer Settings</div>
+            
+            <div class="settings-group">
+                <label class="settings-label">Quick Presets:</label>
+                <div class="preset-buttons">
+                    <button class="btn-preset" data-time="30">30s</button>
+                    <button class="btn-preset active" data-time="60">60s</button>
+                    <button class="btn-preset" data-time="90">90s</button>
+                    <button class="btn-preset" data-time="120">2min</button>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <label class="settings-label" for="customTime">Custom Time (seconds):</label>
+                <input type="number" id="customTime" class="settings-input" value="60" min="1" max="600">
+            </div>
+
+            <div class="settings-buttons">
+                <button class="btn btn-primary" id="saveSettings">Save</button>
+                <button class="btn btn-secondary" id="cancelSettings">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class CountdownTimer {
+            constructor() {
+                this.totalTime = 60;
+                this.currentTime = 60;
+                this.isRunning = false;
+                this.intervalId = null;
+                this.alarmIntervalId = null;
+                this.audioEnabled = false;
+                this.hideControlsTimeout = null;
+                
+                this.timeDisplay = document.getElementById('timeDisplay');
+                this.progressCircle = document.getElementById('progress');
+                this.timerCircle = document.getElementById('timerCircle');
+                this.startBtn = document.getElementById('startBtn');
+                this.resetBtn = document.getElementById('resetBtn');
+                this.settingsBtn = document.getElementById('settingsBtn');
+                this.settingsModal = document.getElementById('settingsModal');
+                this.customTimeInput = document.getElementById('customTime');
+                this.audioPrompt = document.getElementById('audioPrompt');
+                this.controls = document.querySelector('.controls');
+                this.settingsPanel = document.querySelector('.settings-panel');
+                
+                this.circumference = 2 * Math.PI * 90; // radius = 90
+                this.progressCircle.style.strokeDasharray = this.circumference;
+                this.progressCircle.style.strokeDashoffset = this.circumference;
+                
+                this.bindEvents();
+                this.initializeAudio();
+            }
+            
+            initializeAudio() {
+                this.audioContext = null;
+                
+                // Show audio prompt for mobile devices
+                if (this.isMobileDevice()) {
+                    this.audioPrompt.style.display = 'block';
+                    setTimeout(() => {
+                        this.audioPrompt.style.display = 'none';
+                    }, 5000);
+                }
+                
+                // Audio enable handler
+                const enableAudio = async () => {
+                    try {
+                        if (!this.audioContext) {
+                            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        }
+                        
+                        if (this.audioContext.state === 'suspended') {
+                            await this.audioContext.resume();
+                        }
+                        
+                        this.audioEnabled = true;
+                        this.audioPrompt.style.display = 'none';
+                        
+                        // Play a quick test sound to ensure audio is working
+                        this.playTestSound();
+                        
+                        document.removeEventListener('click', enableAudio);
+                        document.removeEventListener('touchstart', enableAudio);
+                        this.audioPrompt.removeEventListener('click', enableAudio);
+                    } catch (error) {
+                        console.log('Audio initialization failed:', error);
+                    }
+                };
+                
+                document.addEventListener('click', enableAudio);
+                document.addEventListener('touchstart', enableAudio);
+                this.audioPrompt.addEventListener('click', enableAudio);
+            }
+            
+            isMobileDevice() {
+                return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            }
+            
+            playTestSound() {
+                if (!this.audioContext || !this.audioEnabled) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.1, this.audioContext.currentTime + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.1);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 0.1);
+            }
+            
+            showControls() {
+                this.controls.classList.add('show');
+                this.settingsPanel.classList.add('show');
+                
+                // Clear existing timeout
+                if (this.hideControlsTimeout) {
+                    clearTimeout(this.hideControlsTimeout);
+                }
+                
+                // Auto-hide after 2 seconds - force hide regardless of hover
+                this.hideControlsTimeout = setTimeout(() => {
+                    this.hideControls();
+                }, 2000);
+            }
+            
+            hideControls() {
+                this.controls.classList.remove('show');
+                this.settingsPanel.classList.remove('show');
+            }
+            
+            bindEvents() {
+                this.startBtn.addEventListener('click', () => {
+                    this.toggleTimer();
+                    this.showControls();
+                });
+                
+                this.resetBtn.addEventListener('click', () => {
+                    this.resetTimer();
+                    this.showControls();
+                });
+                
+                this.settingsBtn.addEventListener('click', () => {
+                    this.openSettings();
+                    this.showControls();
+                });
+                
+                // Show controls on any interaction with timer container
+                document.querySelector('.timer-container').addEventListener('click', () => {
+                    this.showControls();
+                });
+                
+                // Settings modal events
+                document.getElementById('saveSettings').addEventListener('click', () => this.saveSettings());
+                document.getElementById('cancelSettings').addEventListener('click', () => this.closeSettings());
+                
+                // Preset buttons
+                document.querySelectorAll('.btn-preset').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.customTimeInput.value = e.target.dataset.time;
+                    });
+                });
+                
+                // Close modal when clicking outside
+                this.settingsModal.addEventListener('click', (e) => {
+                    if (e.target === this.settingsModal) {
+                        this.closeSettings();
+                    }
+                });
+            }
+            
+            openSettings() {
+                this.settingsModal.style.display = 'flex';
+                this.customTimeInput.value = this.totalTime;
+                
+                // Update active preset button
+                document.querySelectorAll('.btn-preset').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (parseInt(btn.dataset.time) === this.totalTime) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            closeSettings() {
+                this.settingsModal.style.display = 'none';
+            }
+            
+            saveSettings() {
+                const newTime = parseInt(this.customTimeInput.value);
+                if (newTime && newTime > 0 && newTime <= 600) {
+                    this.totalTime = newTime;
+                    this.resetTimer();
+                    this.closeSettings();
+                }
+            }
+            
+            toggleTimer() {
+                if (this.isRunning) {
+                    this.pauseTimer();
+                } else {
+                    this.startTimer();
+                }
+            }
+            
+            startTimer() {
+                // Try to enable audio if not already enabled
+                if (!this.audioEnabled && this.audioContext) {
+                    this.audioContext.resume().then(() => {
+                        this.audioEnabled = true;
+                    });
+                }
+                
+                this.isRunning = true;
+                this.startBtn.textContent = 'Pause';
+                this.startBtn.classList.remove('btn-primary');
+                this.startBtn.classList.add('btn-secondary');
+                
+                this.intervalId = setInterval(() => {
+                    this.currentTime--;
+                    this.updateDisplay();
+                    this.updateProgress();
+                    this.checkAlerts();
+                    
+                    if (this.currentTime <= 0) {
+                        this.completeTimer();
+                    }
+                }, 1000);
+            }
+            
+            pauseTimer() {
+                this.isRunning = false;
+                this.startBtn.textContent = 'Start';
+                this.startBtn.classList.remove('btn-secondary');
+                this.startBtn.classList.add('btn-primary');
+                clearInterval(this.intervalId);
+                clearInterval(this.alarmIntervalId);
+            }
+            
+            resetTimer() {
+                this.pauseTimer();
+                this.currentTime = this.totalTime;
+                this.updateDisplay();
+                this.updateProgress();
+                this.timerCircle.classList.remove('warning', 'critical', 'finished');
+            }
+            
+            completeTimer() {
+                this.pauseTimer();
+                this.currentTime = 0;
+                this.updateDisplay(); // This will now show "0"
+                this.updateProgress();
+                this.timerCircle.classList.remove('warning', 'critical');
+                this.timerCircle.classList.add('finished');
+                this.playFinalAlarm();
+            }
+            
+            updateDisplay() {
+                this.timeDisplay.textContent = this.currentTime;
+            }
+            
+            updateProgress() {
+                const progress = (this.totalTime - this.currentTime) / this.totalTime;
+                const offset = this.circumference - (progress * this.circumference);
+                this.progressCircle.style.strokeDashoffset = offset;
+            }
+            
+            checkAlerts() {
+                // Remove previous states
+                this.timerCircle.classList.remove('warning', 'critical');
+                
+                if (this.currentTime === 10) {
+                    this.playWarningSound();
+                }
+                
+                // Start wiggling at 10 seconds and continue until 0
+                if (this.currentTime <= 10 && this.currentTime > 5) {
+                    this.timerCircle.classList.add('warning');
+                }
+                
+                if (this.currentTime <= 5 && this.currentTime > 0) {
+                    this.timerCircle.classList.add('critical');
+                }
+            }
+            
+            playWarningSound() {
+                if (!this.audioContext || !this.audioEnabled) return;
+                
+                // Create a clear, audible ding sound optimized for mobile
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                // Higher volume and longer duration for mobile
+                oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.7, this.audioContext.currentTime + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 1.0);
+                
+                oscillator.start(this.audioContext.currentTime);
+                oscillator.stop(this.audioContext.currentTime + 1.0);
+            }
+            
+            playFinalAlarm() {
+                if (!this.audioContext || !this.audioEnabled) return;
+                
+                // Play alarm for 3 seconds - optimized for mobile
+                let alarmCount = 0;
+                this.alarmIntervalId = setInterval(() => {
+                    if (alarmCount >= 6) { // 6 beeps over 3 seconds
+                        clearInterval(this.alarmIntervalId);
+                        return;
+                    }
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    // Alternating high and low tones for urgency - higher volume for mobile
+                    const frequency = alarmCount % 2 === 0 ? 1200 : 800;
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.8, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.linearRampToValueAtTime(0.8, this.audioContext.currentTime + 0.3);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.5);
+                    
+                    oscillator.start(this.audioContext.currentTime);
+                    oscillator.stop(this.audioContext.currentTime + 0.5);
+                    
+                    alarmCount++;
+                }, 500); // Every 0.5 seconds
+            }
+        }
+        
+        // Initialize timer when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.timer = new CountdownTimer();
+            // Show controls initially, then auto-hide after 3 seconds
+            setTimeout(() => {
+                window.timer.showControls();
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "type": "rich",
+  "provider_name": "BNI Timer",
+  "provider_url": "https://bni-timer.manus.space/",
+  "title": "BNI Countdown Timer",
+  "author_name": "BNI Timer",
+  "author_url": "https://bni-timer.manus.space/",
+  "width": 400,
+  "height": 300,
+  "html": "<iframe src=\"https://bni-timer.manus.space/embed.html\" width=\"400\" height=\"300\" frameborder=\"0\" allowfullscreen></iframe>",
+  "thumbnail_url": "https://bni-timer.manus.space/thumbnail.png",
+  "thumbnail_width": 400,
+  "thumbnail_height": 300,
+  "cache_age": 3600
+}

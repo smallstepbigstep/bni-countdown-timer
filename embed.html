@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- oEmbed Discovery -->
+    <link rel="alternate" type="application/json+oembed" href="https://bni-timer.manus.space/oembed.json" title="BNI Countdown Timer">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:type" content="rich">
+    <meta property="og:title" content="BNI Countdown Timer">
+    <meta property="og:description" content="Professional countdown timer for BNI presentations">
+    <meta property="og:url" content="https://bni-timer.manus.space/embed.html">
+    <meta property="og:site_name" content="BNI Timer">
+    <meta property="og:rich_attachment" content="true">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="player">
+    <meta name="twitter:title" content="BNI Countdown Timer">
+    <meta name="twitter:description" content="Professional countdown timer for BNI presentations">
+    <meta name="twitter:player" content="https://bni-timer.manus.space/embed.html">
+    <meta name="twitter:player:width" content="400">
+    <meta name="twitter:player:height" content="300">
+    
+    <!-- Embedding Meta Tags -->
+    <meta name="referrer" content="no-referrer">
+    <meta http-equiv="X-Frame-Options" content="ALLOWALL">
+    <meta http-equiv="Content-Security-Policy" content="frame-ancestors *; frame-src *;">
+    <meta name="embed-type" content="rich">
+    <meta name="embed-provider" content="BNI Timer">
+    
+    <title>BNI Countdown Timer - Embeddable Widget</title>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        html, body {
+            width: 100%; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: transparent;
+            overflow: hidden;
+        }
+        
+        .embed-container {
+            width: 100%; height: 100%;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 250px; position: relative;
+        }
+        
+        .timer-widget {
+            position: relative; width: 180px; height: 180px;
+        }
+        
+        .timer-circle {
+            width: 180px; height: 180px; border-radius: 50%;
+            background: #ffffff; box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            position: relative; z-index: 2; cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .timer-circle:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.2); }
+        
+        .progress-svg {
+            position: absolute; width: 190px; height: 190px;
+            top: -5px; left: -5px; transform: rotate(-90deg); z-index: 1;
+        }
+        
+        .progress-bg { fill: none; stroke: #f0f0f0; stroke-width: 4; }
+        .progress-fg { 
+            fill: none; stroke: #C8102E; stroke-width: 4; stroke-linecap: round;
+            stroke-dasharray: 565; stroke-dashoffset: 565;
+            transition: stroke-dashoffset 0.1s linear;
+        }
+        
+        .time-display {
+            font-size: 42px; font-weight: 700; color: #C8102E;
+            line-height: 1; margin-bottom: 2px;
+        }
+        
+        .time-label {
+            font-size: 11px; color: #C8102E; text-transform: uppercase;
+            letter-spacing: 1.2px; font-weight: 500;
+        }
+        
+        .controls {
+            position: absolute; bottom: -45px; left: 50%;
+            transform: translateX(-50%); display: flex; gap: 8px;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        
+        .embed-container:hover .controls, .controls.visible { opacity: 1; }
+        
+        .control-btn {
+            padding: 8px 16px; border: none; border-radius: 6px;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            transition: all 0.2s ease; outline: none;
+        }
+        
+        .btn-primary { background: #C8102E; color: white; }
+        .btn-secondary { background: white; color: #C8102E; border: 2px solid #C8102E; }
+        .control-btn:hover { transform: translateY(-1px); }
+        .btn-primary:hover { background: #A00D26; }
+        .btn-secondary:hover { background: #f8f8f8; }
+        
+        .settings-btn {
+            position: absolute; top: -30px; right: -30px;
+            width: 24px; height: 24px; cursor: pointer;
+            opacity: 0; transition: all 0.3s ease;
+        }
+        
+        .embed-container:hover .settings-btn, .settings-btn.visible { opacity: 1; }
+        .settings-btn:hover { transform: scale(1.1); }
+        .settings-btn svg { width: 100%; height: 100%; fill: #C8102E; }
+        
+        /* Animation States */
+        .warning { animation: shake-warning 0.25s infinite; }
+        .critical { animation: shake-critical 0.2s infinite; }
+        .finished { 
+            animation: flash-complete 0.6s infinite;
+            box-shadow: 0 0 30px rgba(200, 16, 46, 0.4) !important;
+        }
+        
+        .finished .time-display, .finished .time-label { animation: text-flash 0.6s infinite; }
+        
+        @keyframes shake-warning {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-2px); }
+            75% { transform: translateX(2px); }
+        }
+        
+        @keyframes shake-critical {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-3px); }
+            75% { transform: translateX(3px); }
+        }
+        
+        @keyframes flash-complete {
+            0%, 100% { background: #C8102E; }
+            50% { background: white; }
+        }
+        
+        @keyframes text-flash {
+            0%, 100% { color: white; }
+            50% { color: #C8102E; }
+        }
+        
+        /* Settings Modal */
+        .settings-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center;
+            z-index: 1000; backdrop-filter: blur(4px);
+        }
+        
+        .modal-content {
+            background: white; padding: 24px; border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3); text-align: center;
+            min-width: 280px; max-width: 90vw;
+        }
+        
+        .modal-title { color: #C8102E; font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+        .preset-group { margin-bottom: 20px; }
+        .preset-label { color: #666; font-size: 14px; font-weight: 600; margin-bottom: 12px; display: block; }
+        .preset-buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .preset-btn {
+            padding: 8px 12px; background: #f8f8f8; border: 2px solid #e0e0e0;
+            border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;
+            color: #666; transition: all 0.2s ease;
+        }
+        .preset-btn:hover, .preset-btn.active { background: #C8102E; color: white; border-color: #C8102E; }
+        .custom-input {
+            width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 6px;
+            font-size: 16px; margin-bottom: 20px; text-align: center;
+        }
+        .custom-input:focus { outline: none; border-color: #C8102E; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+    </style>
+</head>
+<body>
+    <div class="embed-container" id="embedContainer">
+        <div class="timer-widget">
+            <svg class="progress-svg">
+                <circle class="progress-bg" cx="95" cy="95" r="90"></circle>
+                <circle class="progress-fg" cx="95" cy="95" r="90" id="progressCircle"></circle>
+            </svg>
+            
+            <div class="timer-circle" id="timerCircle">
+                <div class="time-display" id="timeDisplay">60</div>
+                <div class="time-label">seconds</div>
+            </div>
+            
+            <div class="settings-btn" id="settingsBtn">
+                <svg viewBox="0 0 24 24">
+                    <path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.22,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.22,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.68 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/>
+                </svg>
+            </div>
+        </div>
+        
+        <div class="controls" id="controls">
+            <button class="control-btn btn-primary" id="startBtn">Start</button>
+            <button class="control-btn btn-secondary" id="resetBtn">Reset</button>
+        </div>
+    </div>
+
+    <div class="settings-modal" id="settingsModal">
+        <div class="modal-content">
+            <h3 class="modal-title">Timer Settings</h3>
+            <div class="preset-group">
+                <label class="preset-label">Quick Presets</label>
+                <div class="preset-buttons">
+                    <div class="preset-btn" data-seconds="30">30s</div>
+                    <div class="preset-btn active" data-seconds="60">60s</div>
+                    <div class="preset-btn" data-seconds="90">90s</div>
+                    <div class="preset-btn" data-seconds="120">2min</div>
+                </div>
+            </div>
+            <input type="number" class="custom-input" id="customSeconds" value="60" min="1" max="600" placeholder="Custom seconds">
+            <div class="modal-actions">
+                <button class="control-btn btn-primary" id="saveBtn">Save</button>
+                <button class="control-btn btn-secondary" id="cancelBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class EmbeddableTimer {
+            constructor() {
+                this.totalSeconds = 60;
+                this.currentSeconds = 60;
+                this.isActive = false;
+                this.intervalId = null;
+                this.alarmId = null;
+                this.hideTimeout = null;
+                this.audioContext = null;
+                this.audioReady = false;
+                
+                this.elements = {
+                    container: document.getElementById('embedContainer'),
+                    circle: document.getElementById('timerCircle'),
+                    display: document.getElementById('timeDisplay'),
+                    progress: document.getElementById('progressCircle'),
+                    controls: document.getElementById('controls'),
+                    startBtn: document.getElementById('startBtn'),
+                    resetBtn: document.getElementById('resetBtn'),
+                    settingsBtn: document.getElementById('settingsBtn'),
+                    modal: document.getElementById('settingsModal'),
+                    customInput: document.getElementById('customSeconds')
+                };
+                
+                this.circumference = 2 * Math.PI * 90;
+                this.elements.progress.style.strokeDasharray = this.circumference;
+                this.resetProgress();
+                
+                this.setupEventListeners();
+                this.initializeAudio();
+                this.showControlsTemporarily();
+            }
+            
+            setupEventListeners() {
+                this.elements.startBtn.addEventListener('click', () => this.toggleTimer());
+                this.elements.resetBtn.addEventListener('click', () => this.resetTimer());
+                this.elements.settingsBtn.addEventListener('click', () => this.openSettings());
+                this.elements.container.addEventListener('click', () => this.showControlsTemporarily());
+                
+                document.getElementById('saveBtn').addEventListener('click', () => this.saveSettings());
+                document.getElementById('cancelBtn').addEventListener('click', () => this.closeSettings());
+                
+                document.querySelectorAll('.preset-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.elements.customInput.value = e.target.dataset.seconds;
+                    });
+                });
+                
+                this.elements.modal.addEventListener('click', (e) => {
+                    if (e.target === this.elements.modal) this.closeSettings();
+                });
+            }
+            
+            initializeAudio() {
+                const enableAudio = async () => {
+                    try {
+                        this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        if (this.audioContext.state === 'suspended') {
+                            await this.audioContext.resume();
+                        }
+                        this.audioReady = true;
+                        document.removeEventListener('click', enableAudio);
+                        document.removeEventListener('touchstart', enableAudio);
+                    } catch (error) {
+                        console.log('Audio initialization failed:', error);
+                    }
+                };
+                
+                document.addEventListener('click', enableAudio);
+                document.addEventListener('touchstart', enableAudio);
+            }
+            
+            showControlsTemporarily() {
+                this.elements.controls.classList.add('visible');
+                this.elements.settingsBtn.classList.add('visible');
+                
+                if (this.hideTimeout) clearTimeout(this.hideTimeout);
+                this.hideTimeout = setTimeout(() => {
+                    this.elements.controls.classList.remove('visible');
+                    this.elements.settingsBtn.classList.remove('visible');
+                }, 2500);
+            }
+            
+            toggleTimer() {
+                if (this.isActive) this.pauseTimer();
+                else this.startTimer();
+                this.showControlsTemporarily();
+            }
+            
+            startTimer() {
+                this.isActive = true;
+                this.elements.startBtn.textContent = 'Pause';
+                this.elements.startBtn.className = 'control-btn btn-secondary';
+                
+                this.intervalId = setInterval(() => {
+                    this.currentSeconds--;
+                    this.updateDisplay();
+                    this.checkAlerts();
+                    
+                    if (this.currentSeconds <= 0) {
+                        this.completeTimer();
+                    }
+                }, 1000);
+            }
+            
+            pauseTimer() {
+                this.isActive = false;
+                this.elements.startBtn.textContent = 'Start';
+                this.elements.startBtn.className = 'control-btn btn-primary';
+                clearInterval(this.intervalId);
+                clearInterval(this.alarmId);
+            }
+            
+            resetTimer() {
+                this.pauseTimer();
+                this.currentSeconds = this.totalSeconds;
+                this.updateDisplay();
+                this.resetProgress();
+                this.elements.circle.classList.remove('warning', 'critical', 'finished');
+                this.showControlsTemporarily();
+            }
+            
+            completeTimer() {
+                this.pauseTimer();
+                this.currentSeconds = 0;
+                this.updateDisplay();
+                this.elements.circle.classList.add('finished');
+                this.playCompletionAlarm();
+            }
+            
+            updateDisplay() {
+                this.elements.display.textContent = this.currentSeconds;
+                const progressRatio = (this.totalSeconds - this.currentSeconds) / this.totalSeconds;
+                const offset = this.circumference - (progressRatio * this.circumference);
+                this.elements.progress.style.strokeDashoffset = offset;
+            }
+            
+            resetProgress() {
+                this.elements.progress.style.strokeDashoffset = this.circumference;
+            }
+            
+            checkAlerts() {
+                this.elements.circle.classList.remove('warning', 'critical');
+                
+                if (this.currentSeconds === 10) {
+                    this.playWarningSound();
+                }
+                
+                if (this.currentSeconds <= 10 && this.currentSeconds > 5) {
+                    this.elements.circle.classList.add('warning');
+                }
+                
+                if (this.currentSeconds <= 5 && this.currentSeconds > 0) {
+                    this.elements.circle.classList.add('critical');
+                }
+            }
+            
+            playWarningSound() {
+                if (!this.audioContext || !this.audioReady) return;
+                
+                const oscillator = this.audioContext.createOscillator();
+                const gainNode = this.audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(1000, this.audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.4, this.audioContext.currentTime + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 1.0);
+                
+                oscillator.start();
+                oscillator.stop(this.audioContext.currentTime + 1.0);
+            }
+            
+            playCompletionAlarm() {
+                if (!this.audioContext || !this.audioReady) return;
+                
+                let beepCount = 0;
+                this.alarmId = setInterval(() => {
+                    if (beepCount >= 6) {
+                        clearInterval(this.alarmId);
+                        return;
+                    }
+                    
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    const frequency = beepCount % 2 === 0 ? 1200 : 800;
+                    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+                    
+                    gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+                    gainNode.gain.linearRampToValueAtTime(0.5, this.audioContext.currentTime + 0.01);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
+                    
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.4);
+                    
+                    beepCount++;
+                }, 500);
+            }
+            
+            openSettings() {
+                this.elements.modal.style.display = 'flex';
+                this.elements.customInput.value = this.totalSeconds;
+                
+                document.querySelectorAll('.preset-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (parseInt(btn.dataset.seconds) === this.totalSeconds) {
+                        btn.classList.add('active');
+                    }
+                });
+            }
+            
+            closeSettings() {
+                this.elements.modal.style.display = 'none';
+            }
+            
+            saveSettings() {
+                const newSeconds = parseInt(this.elements.customInput.value);
+                if (newSeconds && newSeconds > 0 && newSeconds <= 600) {
+                    this.totalSeconds = newSeconds;
+                    this.resetTimer();
+                    this.closeSettings();
+                }
+            }
+        }
+        
+        // Initialize when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.bniTimer = new EmbeddableTimer();
+        });
+        
+        // Expose timer for external access
+        window.addEventListener('message', (event) => {
+            if (event.data.action === 'getTimerState') {
+                event.source.postMessage({
+                    type: 'timerState',
+                    isActive: window.bniTimer.isActive,
+                    currentSeconds: window.bniTimer.currentSeconds,
+                    totalSeconds: window.bniTimer.totalSeconds
+                }, event.origin);
+            }
+        });
+    </script>
+</body>
+</html>

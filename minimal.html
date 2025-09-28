@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BNI Timer</title>
+<style>
+body{margin:0;padding:0;font-family:Arial;background:#f5f5f5;display:flex;justify-content:center;align-items:center;height:100vh}
+.timer{position:relative;width:200px;height:200px}
+.circle{width:200px;height:200px;border-radius:50%;background:#fff;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,0.1);cursor:pointer;position:relative;z-index:2}
+.progress{position:absolute;width:210px;height:210px;top:-5px;left:-5px;transform:rotate(-90deg);z-index:1}
+.progress circle{fill:none;stroke-width:6;stroke-linecap:round}
+.bg{stroke:#e5e5e5}
+.fg{stroke:#C8102E;stroke-dasharray:628;stroke-dashoffset:628;transition:stroke-dashoffset 0.1s}
+.time{font-size:48px;font-weight:bold;color:#C8102E}
+.label{font-size:12px;color:#C8102E;text-transform:uppercase;letter-spacing:1px}
+.controls{position:absolute;bottom:-50px;left:50%;transform:translateX(-50%);display:flex;gap:10px;opacity:0;transition:opacity 0.3s}
+.timer:hover .controls{opacity:1}
+.btn{padding:8px 16px;border:none;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;text-transform:uppercase}
+.start{background:#C8102E;color:#fff}
+.reset{background:#fff;color:#C8102E;border:1px solid #C8102E}
+.shake{animation:shake 0.2s infinite}
+.flash{animation:flash 0.5s infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-2px)}75%{transform:translateX(2px)}}
+@keyframes flash{0%,100%{background:#C8102E}50%{background:#fff}}
+</style>
+</head>
+<body>
+<div class="timer" id="timer">
+<svg class="progress"><circle class="bg" cx="105" cy="105" r="100"></circle><circle class="fg" cx="105" cy="105" r="100" id="progress"></circle></svg>
+<div class="circle" id="circle">
+<div class="time" id="time">60</div>
+<div class="label">seconds</div>
+</div>
+<div class="controls">
+<button class="btn start" id="start">Start</button>
+<button class="btn reset" id="reset">Reset</button>
+</div>
+</div>
+<script>
+let t=60,c=60,r=false,i=null;
+const e=document.getElementById('time'),p=document.getElementById('progress'),s=document.getElementById('start'),b=document.getElementById('reset'),d=document.getElementById('circle');
+function u(){e.textContent=c;const o=(t-c)/t*628;p.style.strokeDashoffset=628-o}
+function a(){d.classList.remove('shake','flash');if(c<=10&&c>5)d.classList.add('shake');if(c<=5&&c>0)d.classList.add('shake');if(c===0)d.classList.add('flash')}
+s.onclick=()=>{if(r){r=false;s.textContent='Start';clearInterval(i)}else{r=true;s.textContent='Pause';i=setInterval(()=>{c--;u();a();if(c<=0){r=false;s.textContent='Start';clearInterval(i)}},1000)}};
+b.onclick=()=>{r=false;s.textContent='Start';clearInterval(i);c=t;u();d.classList.remove('shake','flash')};
+u();
+</script>
+</body>
+</html>
